@@ -150,12 +150,24 @@ jobs:
           RULES_DRIFT_REQUIRED: ${{ vars.RULES_DRIFT_REQUIRED || 'false' }}
         run: bash scripts/rules-drift.sh
 
+  mcp-image:
+    name: MCP-image (testdata)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bouwen en rookproef
+        # De pipeline start deze container per run. Een image dat pas kapot
+        # blijkt tijdens een agent-run kost een halve run; hier kost het niets.
+        run: bash scripts/build-testdata-mcp.sh
+
   gate:
     # Eén check om verplicht te stellen in branch protection. Komt er later een
     # job bij, dan hoeft de instelling op GitHub niet mee te veranderen.
     name: Kwaliteitspoort
     runs-on: ubuntu-latest
-    needs: [backend, frontend, rules-drift]
+    needs: [backend, frontend, rules-drift, mcp-image]
     if: always()
     steps:
       - name: Resultaat van alle jobs
@@ -163,6 +175,7 @@ jobs:
           echo "backend:     ${{ needs.backend.result }}"
           echo "frontend:    ${{ needs.frontend.result }}"
           echo "rules-drift: ${{ needs['rules-drift'].result }}"
+          echo "mcp-image:   ${{ needs['mcp-image'].result }}"
           if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
             echo "::error title=Poort dicht::Minstens één job is rood."
             exit 1

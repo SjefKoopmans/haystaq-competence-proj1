@@ -1,19 +1,21 @@
 {
-  "mcpServers": {
+  "servers": {
     "github": {
+      "type": "stdio",
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
-        "--env-file", ".env.mcp",
+        "--env-file", "${workspaceFolder}/.env.mcp",
         "-e", "GITHUB_TOOLSETS=context,repos,issues,pull_requests,actions",
         "ghcr.io/github/github-mcp-server"
       ]
     },
     "jira": {
+      "type": "stdio",
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
-        "--env-file", ".env.mcp",
+        "--env-file", "${workspaceFolder}/.env.mcp",
         "-e", "JIRA_URL=https://haystaqteam3.atlassian.net",
         "-e", "JIRA_PROJECTS_FILTER=KAN",
         "-e", "TOOLSETS=jira_issues,jira_agile,jira_transitions,jira_comments,jira_projects,jira_users",
@@ -21,21 +23,23 @@
       ]
     },
     "postgres": {
+      "type": "stdio",
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
         "--add-host", "host.docker.internal:host-gateway",
-        "--env-file", ".env.mcp",
+        "--env-file", "${workspaceFolder}/.env.mcp",
         "crystaldba/postgres-mcp:latest",
         "--access-mode=restricted"
       ]
     },
     "testdata": {
+      "type": "stdio",
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
         "--add-host", "host.docker.internal:host-gateway",
-        "--env-file", ".env.mcp",
+        "--env-file", "${workspaceFolder}/.env.mcp",
         "tijdwijs/testdata-mcp:latest"
       ]
     }
