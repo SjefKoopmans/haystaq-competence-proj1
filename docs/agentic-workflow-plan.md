@@ -92,27 +92,36 @@ Jira issue -> transitie "Ready for Agent"
 
 Doel: een kwaliteitspoort die een agent kan halen of falen.
 
-1. Maven wrapper (`mvnw`) — reproduceerbare builds
-2. `pom.xml`: surefire + failsafe, jacoco (drempel start laag, per fase
-   optrekken), spotless (google-java-format AOSP), checkstyle
-3. Testcontainers + RestAssured toevoegen *(parallel met 1)*
-4. `backend/src/test` met **karakteriseringstests** (Feathers): *(depends on 1,3)*
-   - unit: `Iban` (mod97/nl_length/format), `Hours` (step/positive),
-     `IsoWeek` (firstDay/lastDay/contains/weeksInYear), `Money`,
-     `EmployeeCode`, `ProjectCode`
-   - domain: `Employee.register`, `Timesheet.book/submit/approve`,
-     `Absence.request`, `ExpenseClaim.file`,
-     `Project.start/changeStatus/assertBookableOn`
-   - elke test parametrized met assertie op `ex.code()`
-   - dit is tegelijk de **verificatie** van `docs/discovered-rules.md`
-5. Integratielaag: `@SpringBootTest` + Testcontainers Postgres, RestAssured
-   tegen de echte API, gevoed door de testdata-MCP *(depends on 4)*
-6. Frontend: vitest + testing-library + eslint + prettier + `tsc --noEmit`
-   *(parallel)*
-7. `.editorconfig`, `CODEOWNERS`, PR-template met agent-checklist *(parallel)*
-8. `.github/workflows/ci.yml`: build, spotless:check, checkstyle, unit, IT,
-   jacoco-gate, frontend lint+test+build *(depends on 4,6)*
-9. Branch protection op `main`: verplichte checks + verplichte review
+> **Status per 2026-09-10** — zie [testing.md](testing.md) voor de volledige
+> overdracht en verantwoording. Legenda: ✅ klaar, 🔶 deels/bewust anders,
+> ⬜ open, met eigenaar (A/B/C) of **open — niemand toegewezen**.
+
+- [x] 1. Maven wrapper (`mvnw`) — reproduceerbare builds — ✅ **Persoon A**
+- [x] 2. `pom.xml`: surefire + failsafe — ✅ **Persoon A**.
+      jacoco/spotless/checkstyle 🔶 **bewust overgeslagen** in fase 0, zie
+      "Bewust weggelaten uit fase 0" in `testing.md`. Checkstyle mag alsnog
+      door Persoon C als losstaande, optionele check in `ci.yml`.
+- [ ] 3. Testcontainers + RestAssured toevoegen *(parallel met 1)* —
+      ⬜ **Persoon B**, fase 0.5
+- [x] 4. `backend/src/test` met **karakteriseringstests** (Feathers) —
+      ✅ **Persoon A**, 839 tests, `BUILD SUCCESS` (unit-scope, aggregates +
+      value objects). De ~30 applicatielaag-codes (`*Service`) zijn met
+      opzet **niet** hier gedekt.
+- [ ] 5. Integratielaag: `@SpringBootTest` + Testcontainers Postgres,
+      RestAssured tegen de echte API, gevoed door de testdata-MCP
+      *(depends on 4)* — ⬜ **Persoon B**, fase 0.5
+- [ ] 6. Frontend: vitest + testing-library + eslint + prettier +
+      `tsc --noEmit` *(parallel)* — ⬜ **open — niemand toegewezen.**
+      Geen overlap met backend-scope van A/B; kandidaat voor Persoon C of
+      een vierde persoon als de tijd het toelaat.
+- [ ] 7. `.editorconfig`, `CODEOWNERS`, PR-template met agent-checklist
+      *(parallel)* — ⬜ **open — niemand toegewezen.** Klein en
+      onafhankelijk; kan door wie als eerste tijd heeft, ook tussendoor.
+- [ ] 8. `.github/workflows/ci.yml`: build, unit, IT, frontend lint+test+build
+      *(depends on 4,6)* — ⬜ **Persoon C**. Jacoco-gate en spotless
+      vervallen (zie item 2); checkstyle optioneel.
+- [ ] 9. Branch protection op `main`: verplichte checks + verplichte review —
+      ⬜ **Persoon C**, na 8
 
 ### Fase 1 — Foutcontract & regelbron (~1 dag)
 
