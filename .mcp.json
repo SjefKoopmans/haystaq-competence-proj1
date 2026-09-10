@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "--env-file", ".env.mcp",
+        "-e", "GITHUB_TOOLSETS=context,repos,issues,pull_requests,actions",
+        "ghcr.io/github/github-mcp-server"
+      ]
+    },
+    "jira": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "--env-file", ".env.mcp",
+        "-e", "JIRA_URL=https://haystaqteam3.atlassian.net",
+        "-e", "JIRA_PROJECTS_FILTER=KAN",
+        "-e", "TOOLSETS=jira_issues,jira_agile,jira_transitions,jira_comments,jira_projects,jira_users",
+        "ghcr.io/sooperset/mcp-atlassian:latest"
+      ]
+    }
+  }
+}
