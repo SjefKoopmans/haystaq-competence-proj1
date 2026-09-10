@@ -1,0 +1,5 @@
+# Versies gepind: een MCP-server die vanzelf meebeweegt met een nieuwe SDK is
+# een build die morgen anders faalt dan vandaag.
+mcp==1.2.0
+psycopg[binary]==3.2.3
+httpx==0.28.1
