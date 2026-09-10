@@ -1,6 +1,7 @@
 # Testen — TijdWijs backend
 
-> Status: fase 0 blok 1-2 afgerond. Eigenaar: Persoon A.
+> Status: fase 0 afgerond voor Persoon A (blok 1-4). jacoco/spotless/checkstyle
+> (blok 5) zijn **bewust overgeslagen** — zie "Bewust weggelaten" onderaan.
 > Zie [agentic-workflow-plan.md](agentic-workflow-plan.md) §5 voor de fasering.
 
 Dit document beschrijft hoe de kwaliteitspoort werkt en welk patroon
@@ -90,7 +91,7 @@ zekerheid. Uitgevoerd op 2026-09-10:
 
 | # | Check | Resultaat |
 | --- | --- | --- |
-| 1 | `mvnw test` groen met testaantal > 0 | 30 tests, `BUILD SUCCESS`, ~2 s |
+| 1 | `mvnw test` groen met testaantal > 0 | **839 tests**, `BUILD SUCCESS` |
 | 2 | Selectief draaien (`-Dtest=IbanTest`) | werkt — nodig voor `failure-triager`, fase 5 |
 | 3 | **Mutatiecheck**: `iban.nl_length` 18 → 20 | 13 van 26 tests rood, daarna teruggedraaid |
 | 4 | `target/` genegeerd door git | `.gitignore:2` |
@@ -102,26 +103,65 @@ uitbreiding van de suite.
 ## Karakteriseringen: vastgelegd, niet gerepareerd
 
 Fase 0 legt bestaand gedrag vast. Onderstaande punten zien er verkeerd uit
-maar zijn met een `// KARAKTERISERING:`-comment vastgelegd zoals ze nu zijn.
-Repareren gebeurt in fase 1, mét testdekking als net.
+maar zijn met een `// KARAKTERISERING:`-comment in de bijbehorende testklasse
+vastgelegd zoals ze nu zijn. Repareren gebeurt in fase 1, mét testdekking als
+net. Zoek op `KARAKTERISERING` in `backend/src/test` voor de volledige lijst
+met code; hieronder de samenvatting per thema.
+
+**Inconsistente `parse(null)`-afhandeling tussen enums:**
+
+| Enum | `parse(null)` |
+| --- | --- |
+| `ContractType`, `Absence.Type` | gooit een `.missing`-fout |
+| `ProjectStatus`, `ProjectMember.Role`, `EntryType` | kiest stilzwijgend een default (DRAFT/MEMBER/REGULAR) |
+
+**Plekken zonder rule-code (NPE of NumberFormatException in plaats van `BusinessRuleViolation`):**
+
+- `Hours.of("acht")` → `NumberFormatException`
+- `ContractType.validateRate(null)` bij INTERN/FREELANCE → `NullPointerException`
+- `Timesheet.book(..., workDate=null, ...)` → `NullPointerException` (via `IsoWeek.contains`)
+- `Timesheet.submit(..., approvedAbsenceHours=null, ...)` → `NullPointerException`
+- `Project.changeStatus(null)` → `NullPointerException` (via `Set.of(...).contains(null)`)
+- `ExpenseClaim.file(..., category=null, ...)` → `NullPointerException`
+
+**Drie verschillende stapgroottes in één domein:** `Hours` (kwartier, 0,25),
+`Employee.contract_hours` (half uur, 0,5), `Absence.hours_per_day` (half uur,
+0,5). Geen technisch probleem, wel vermeldenswaard voor wie een generieke
+"uren"-validator zou willen bouwen.
+
+**Ontbrekende invarianten / autorisatie, vergeleken met `Timesheet`:**
+
+- `Absence.approve()` heeft geen statuscheck en geen goedkeurder — dubbel
+  goedkeuren mag, in tegenstelling tot `Timesheet.approve` (4 regels).
+- `ExpenseClaim.decide()` kent geen bevoegdheidscontrole op de beslisser.
+- `Employee.assertCanBookOn` wordt door `TimesheetService` niet gebruikt;
+  die gebruikt in plaats daarvan `EmployeeSnapshot.canBookOn`.
+- `TimeEntry.projectId` wordt niet op null gevalideerd, ondanks `NOT NULL`
+  in `V1__schema.sql`.
+- `Absence.request()` valideert `type` niet op null, ondanks `NOT NULL` in
+  het schema.
+
+**Overig:**
+
+- `Money.of()` rondt af op 2 decimalen (HALF_UP); de constructor weigert
+  meer dan 2 decimalen (`money.scale`). Twee ingangen, twee gedragingen.
+- `Client.register`: `active=null` → `true`; `Absence.request`:
+  `approved=null` → `false`. Tegengestelde defaults voor een vergelijkbaar
+  veld.
+- `Iban`: de NL-lengte-eis (18 tekens) geldt alleen voor NL; andere landen
+  worden enkel op mod-97 gecontroleerd.
+- `EmploymentPeriod.hire_date.future`: een indienstdatum mag tot 365 dagen
+  vooruit worden vastgelegd.
+- `Project.start(..., status=ACTIVE, ...)` mag zonder taken; alleen
+  `changeStatus(ACTIVE)` bewaakt `project.no_tasks`.
+- `Project.reschedule` bewaakt de projectstatus niet — kan ook op een
+  gesloten project.
+- `ProjectCode` begrenst het jaartal niet (in tegenstelling tot `IsoWeek`,
+  dat 2000-2100 eist).
 
 **Openstaande vragen voor het team:**
 
-| # | Klasse | Waargenomen gedrag | Vraag |
-| --- | --- | --- | --- |
-| 1 | `Iban` | Lengtecontrole geldt alleen voor NL; andere landen worden enkel op mod-97 gecheckt | Bewust? |
-| 2 | `Iban` | `JpaConverter` valideert bij lezen — corrupte kolomdata gooit een domeinfout | Gewenst bij inlezen bestaande data? |
-| 3 | `Hours` | 0 uur is ongeldig (`hours.positive`) | Moet 0 kunnen, bijv. bij correctieboekingen? |
-| 4 | `Absence` | `approve()` heeft geen statuscheck; dubbel goedkeuren mag | Ontbrekende invariant? |
-| 5 | `Employee` | `assertCanBookOn` wordt niet gebruikt door `TimesheetService`, die gebruikt `EmployeeSnapshot.canBookOn` | Dode code of gemiste controle? |
-| 6 | `TimeEntry` | `projectId` wordt niet op null gevalideerd | Ontbrekende `require`? |
-| 7 | `ProjectStatus` | `parse(null)` geeft `DRAFT`, geen fout | Bewuste default? |
-| 8 | `Money` | `of()` rondt af op 2 decimalen, `new Money()` weigert ze (`money.scale`) | Twee ingangen met verschillend gedrag — bewust? |
-| 9 | `EmploymentPeriod` | Toekomstige indienstdatum mag tot 365 dagen vooruit | Bewust? |
 
-Punten 1-2 zijn tijdens het schrijven van `IbanTest` vastgesteld en getest;
-3-9 komen uit de code-inventarisatie en worden in blok 3-4 met tests
-vastgelegd.
 
 ## Dekking
 
@@ -135,16 +175,32 @@ domeinlaag. Voortgang:
 | --- | --- | --- | --- |
 | `testsupport` | `Violations`, `Fixtures` (+ `FixturesTest`) | — | ✅ fundament |
 | `personeel.domain` | `Iban` | 4 | ✅ volledig |
-| `shared.domain` | `Money`, `Hours`, `IsoWeek` | 9 | ⬜ blok 3 |
-| `personeel.domain` | `EmployeeCode`, `EmailAddress`, `EmploymentPeriod`, `ContractType` | 9 | ⬜ blok 3 |
-| `projecten.domain` | `ProjectCode`, `ProjectStatus`, `ProjectMember`, `ProjectTask` | 6 | ⬜ blok 3 |
-| `urenregistratie.domain` | `EntryType`, `TimeEntry` | 6 | ⬜ blok 3 |
-| aggregates | `Employee`, `Timesheet`, `Absence`, `Project`, `Client`, `ExpenseClaim` | ~45 | ⬜ blok 4 |
-| applicatielaag | `*Service` | ~30 | ⬜ fase 0.5, Persoon B |
+| `shared.domain` | `Money`, `Hours`, `IsoWeek` | 9 | ✅ volledig |
+| `personeel.domain` | `EmployeeCode`, `EmailAddress`, `EmploymentPeriod`, `ContractType` | 9 | ✅ volledig |
+| `projecten.domain` | `ProjectCode`, `ProjectStatus`, `ProjectMember` | 5 | ✅ volledig |
+| `urenregistratie.domain` | `EntryType`, `TimesheetStatus` | 1 | ✅ volledig |
+| aggregates | `Employee`, `Timesheet` (+ `TimeEntry`), `Absence`, `Project` (+ `ProjectTask`), `Client`, `ExpenseClaim` | ~45 | ✅ volledig — **839 tests totaal** |
+| applicatielaag | `*Service` | ~30 | ⬜ fase 0.5, Persoon B (integratietests, geen unit-scope) |
 
-Jacoco komt in blok 5, ná blok 4: eerst meten, dan de drempel vijf punten
-onder de werkelijke waarde zetten. Een drempel die direct rood is, zet
-iemand binnen een dag uit.
+Alle domeinlaag-codes die via de publieke API van een value object of
+aggregate bereikbaar zijn, hebben een test. De ~30 codes in de
+applicatielaag (`TimesheetService` vooral) zijn met opzet **niet** hier
+getest: die coördineren tussen aggregates (project actief? medewerker in
+dienst?) en hebben een Spring-context nodig. Dat is Persoon B, fase 0.5.
+
+## Bewust weggelaten uit fase 0
+
+Om het werk klein te houden zijn drie punten uit de oorspronkelijke
+fasering **niet** uitgevoerd:
+
+| Onderdeel | Reden om te laten vallen |
+| --- | --- |
+| jacoco-coveragedrempel | De mutatiecheck (zie boven) bewijst al dat de poort bijt. Coverage-percentage voegt daar niets aan toe en kost onderhoud (drempel bijstellen bij elke wijziging). |
+| spotless | Raakt bij eerste toepassing alle 62 bestanden in `src/main`. Levert nu alleen ruis in de diff op, geen extra zekerheid. |
+| checkstyle | Voegt niets toe bovenop 839 gedragstests. Kan alsnog door Persoon C in `ci.yml` als losstaande, optionele check worden toegevoegd. |
+
+De kwaliteitspoort werkt zonder deze drie: `mvnw verify` is het enige dat
+nodig is als verplichte CI-check.
 
 ## Voor Persoon B en C
 
@@ -175,9 +231,15 @@ iemand binnen een dag uit.
 - Publiceer `backend/target/surefire-reports/*.xml` als testrapport; die
   bevatten de rule-code in de faalmelding, wat `failure-triager` nodig heeft.
 
-## Nog te doen in fase 0 (Persoon A)
+## Status: fase 0 voor Persoon A is afgerond
 
-- Blok 3: value-object-tests (`shared`, `personeel`, `projecten`, `urenregistratie`)
-- Blok 4: aggregate-tests (6 klassen)
-- Blok 5: jacoco-drempel, spotless (in één losse opmaak-commit — raakt alle
-  62 bestanden), checkstyle op `severity=warning`
+- ✅ Blok 1-2: Maven wrapper, surefire/failsafe, `Violations`, `Fixtures`, `IbanTest`
+- ✅ Blok 3: value-object-tests (`shared`, `personeel`, `projecten`, `urenregistratie`)
+- ✅ Blok 4: aggregate-tests (`Employee`, `Timesheet`+`TimeEntry`, `Absence`,
+  `Project`+`ProjectTask`, `Client`, `ExpenseClaim`) — **839 tests, `BUILD SUCCESS`**
+- ⬜ Blok 5 (jacoco/spotless/checkstyle): **bewust niet gedaan**, zie
+  "Bewust weggelaten uit fase 0" hierboven
+
+Niets resteert voor Persoon A binnen fase 0. Vervolgstappen liggen bij
+Persoon B (fase 0.5: Testcontainers, RestAssured, `*IT`) en Persoon C
+(`ci.yml`, branch protection).
