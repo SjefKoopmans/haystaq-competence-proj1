@@ -1,0 +1,96 @@
+name: Agent report
+
+# Wekelijkse rollup van docs/agent-metrics/*.json naar REPORT.md (fase 5.2).
+#
+# Het rapport komt binnen als PR en niet als directe commit op main: het is
+# input voor een gesprek, en een PR dwingt af dat iemand ernaar kijkt. Dat is
+# ook de plek waar `retro-analyst` zijn voorstellen aan hangt.
+
+on:
+  schedule:
+    # Maandag 06:00 UTC. GitHub kan een schedule uitstellen bij drukte; voor een
+    # weekrapport maakt een half uur niets uit.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Venster in dagen (leeg = alles)'
+        required: false
+        default: '7'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: agent-report
+  cancel-in-progress: false
+
+jobs:
+  rollup:
+    name: Metrics-rollup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Metrics valideren
+        # Faalt de validatie, dan is er een meetbestand kapot. Dat willen we
+        # weten - een rollup over stille fouten is erger dan geen rollup.
+        run: node scripts/metrics-rollup.mjs --validate
+
+      - name: Rapport genereren
+        run: |
+          DAYS="${{ github.event.inputs.days }}"
+          if [ -n "$DAYS" ]; then
+            node scripts/metrics-rollup.mjs --days "$DAYS"
+          else
+            node scripts/metrics-rollup.mjs --days 7
+          fi
+
+      - name: Wijziging bepalen
+        id: diff
+        run: |
+          if git diff --quiet -- docs/agent-metrics/REPORT.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Rapport is ongewijzigd; geen PR nodig."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: PR openen
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="metrics/report-$(date -u +%Y-%m-%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add docs/agent-metrics/REPORT.md
+          git commit -m "docs(metrics): wekelijkse rollup $(date -u +%Y-%m-%d)"
+          git push --set-upstream origin "$BRANCH"
+
+          cat > /tmp/pr-body.md <<'BODY'
+          Gegenereerd door `scripts/metrics-rollup.mjs` via de wekelijkse workflow.
+
+          Kijk vooral naar de twee besluitmetrics bovenaan het rapport:
+
+          1. **Runs zonder menselijke correctie** - bepaalt of het autonomiedomein mag groeien.
+          2. **Gatekeeper false negatives / positives** - bepaalt of de reviewagent netto tijd bespaart.
+
+          Dit is een gegenereerd bestand; wijzig het niet met de hand.
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+          BODY
+          # De YAML-inspringing weer weghalen uit de body.
+          sed -i 's/^          //' /tmp/pr-body.md
+
+          gh pr create \
+            --title "docs(metrics): wekelijkse rollup $(date -u +%Y-%m-%d)" \
+            --body-file /tmp/pr-body.md \
+            --label agent-generated

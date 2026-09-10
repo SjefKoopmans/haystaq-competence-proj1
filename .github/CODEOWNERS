@@ -1,0 +1,44 @@
+# CODEOWNERS - wie moet er kijken voordat dit gemerged wordt.
+#
+# Deze repo staat op een persoonlijk GitHub-account, niet in een organisatie.
+# Daarom staan hier gebruikersnamen en géén teams (@org/team werkt alleen in
+# een organisatie). Verhuist de repo naar een org, vervang de regels dan door
+# teams - dat schaalt beter dan namen.
+#
+# Let op: CODEOWNERS wordt pas afgedwongen als branch protection op `main`
+# "Require review from Code Owners" aan heeft staan. Zie
+# docs/branch-protection.md.
+
+# Basisregel: alles heeft minimaal één eigenaar.
+*                                   @SjefKoopmans
+
+# Kwaliteitspoort en agent-configuratie. Wijzigingen hier bepalen of de poort
+# nog iets tegenhoudt; die mag een agent nooit ongezien aanpassen.
+/.github/                           @SjefKoopmans
+/.github/workflows/                 @SjefKoopmans
+/.github/agents/                    @SjefKoopmans
+/.github/skills/                    @SjefKoopmans
+/.github/instructions/              @SjefKoopmans
+/.mcp.json                          @SjefKoopmans
+/.vscode/mcp.json                   @SjefKoopmans
+/scripts/                           @SjefKoopmans
+
+# Buildconfiguratie: hier verandert wat er wel en niet wordt gecontroleerd.
+/backend/pom.xml                    @SjefKoopmans
+/frontend/package.json              @SjefKoopmans
+/frontend/eslint.config.js          @SjefKoopmans
+/docker-compose.yml                 @SjefKoopmans
+/docker-compose.mcp.yml             @SjefKoopmans
+
+# Migraties zijn forward-only en onomkeerbaar in productie.
+/backend/src/main/resources/db/     @SjefKoopmans
+
+# Architectuur en business rules: inhoudelijke besluiten, geen agent-werk.
+/docs/architecture.md               @SjefKoopmans
+/docs/business-rules.md             @SjefKoopmans
+/docs/agentic-workflow-plan.md      @SjefKoopmans
+/docs/agent-catalogus.md            @SjefKoopmans
+
+# Gegenereerd door de rule-registry. Handmatige wijzigingen worden door de
+# drift-gate teruggedraaid; review is hier bewust extra streng.
+/docs/discovered-rules.md           @SjefKoopmans

@@ -10,7 +10,12 @@ dist/
 .env
 *.log
 .idea/
-.vscode/
+# Let op: `.vscode/*` en niet `.vscode/`. Bij de tweede vorm daalt git niet af
+# in de map en werkt de uitzondering hieronder niet.
+.vscode/*
+# Uitzondering: de MCP-serverdefinitie is projectconfiguratie, geen persoonlijke
+# editorinstelling. De secrets staan in .env.mcp, niet hier.
+!.vscode/mcp.json
 .DS_Store
 
 # Persoonlijke MCP-secrets

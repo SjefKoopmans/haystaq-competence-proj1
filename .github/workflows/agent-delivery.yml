@@ -1,0 +1,195 @@
+name: Agent delivery
+
+# Jira-naar-PR pipeline (fase 4).
+#
+# Jira Automation stuurt bij een transitie een webhook naar GitHub
+# (repository_dispatch). Deze workflow zet de omgeving klaar en geeft het werk
+# aan de orchestrator. Zie docs/jira-automation.md voor de Jira-kant.
+#
+# Wat deze workflow zelf bewaakt - en dus niet aan een agent overlaat:
+#   1. kill switch      AGENT_ENABLED=false stopt elke run binnen een minuut
+#   2. kostenplafond    maximaal N runs per dag, hard
+#   3. tokencap         harde bovengrens per run, doorgegeven aan de keten
+#   4. timeout          45 minuten, daarna afgebroken
+#   5. concurrency      één run per issue key, zodat twee agents niet dezelfde
+#                       branch schrijven
+
+on:
+  repository_dispatch:
+    types: [jira-agent-request]
+  workflow_dispatch:
+    inputs:
+      issue_key:
+        description: 'Jira issue key, bijvoorbeeld KAN-42'
+        required: true
+
+# Eén run per ticket. Een tweede webhook voor hetzelfde ticket wacht netjes;
+# hij annuleert de eerste niet, want die heeft mogelijk al een branch gepusht.
+concurrency:
+  group: agent-${{ github.event.client_payload.issue_key || github.event.inputs.issue_key }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  checks: read
+
+jobs:
+  guard:
+    name: Poortwachter (kill switch en plafond)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      issue_key: ${{ steps.payload.outputs.issue_key }}
+    steps:
+      - name: Kill switch
+        # Eerste stap, expres. Repo-variable AGENT_ENABLED op `false` zetten
+        # moet binnen een minuut effect hebben; daarom staat hier niets vóór.
+        run: |
+          if [ "${{ vars.AGENT_ENABLED }}" != "true" ]; then
+            echo "::error title=Kill switch actief::AGENT_ENABLED staat niet op 'true'. Er wordt niets uitgevoerd."
+            exit 1
+          fi
+          echo "AGENT_ENABLED=true - doorgaan."
+
+      - name: Issue key valideren
+        id: payload
+        run: |
+          KEY="${{ github.event.client_payload.issue_key || github.event.inputs.issue_key }}"
+          if ! printf '%s' "$KEY" | grep -Eq '^KAN-[0-9]+$'; then
+            echo "::error title=Ongeldige issue key::'$KEY' voldoet niet aan KAN-<nummer>. Payload komt van buiten; niet vertrouwen."
+            exit 1
+          fi
+          echo "issue_key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "Ticket: $KEY"
+
+      - name: Kostenplafond
+        # Een agent met een oneindige werkvoorraad is een oneindige rekening.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAX_RUNS: ${{ vars.AGENT_MAX_RUNS_PER_DAY || '10' }}
+        run: |
+          TODAY="$(date -u +%Y-%m-%d)"
+          RUNS="$(gh api \
+            "/repos/${{ github.repository }}/actions/workflows/agent-delivery.yml/runs?created=>=${TODAY}&per_page=100" \
+            --jq '.total_count' 2>/dev/null || echo 0)"
+          echo "Runs vandaag: $RUNS van maximaal $MAX_RUNS"
+          if [ "$RUNS" -gt "$MAX_RUNS" ]; then
+            echo "::error title=Kostenplafond bereikt::$RUNS runs vandaag, plafond is $MAX_RUNS. Verhoog AGENT_MAX_RUNS_PER_DAY bewust, of wacht tot morgen."
+            exit 1
+          fi
+
+  deliver:
+    name: Keten uitvoeren
+    needs: guard
+    # Self-hosted vereist Docker, Java 21, Node en een draaiende Docker-daemon
+    # voor Testcontainers. Zolang dat er niet is, draait het op GitHub-hosted.
+    # Zet repo-variable AGENT_RUNNER om te wisselen (openstaand punt B5).
+    runs-on: ${{ vars.AGENT_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    env:
+      ISSUE_KEY: ${{ needs.guard.outputs.issue_key }}
+      AGENT_TOKEN_CAP: ${{ vars.AGENT_TOKEN_CAP || '1500000' }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${{ github.token }}
+      JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Testdata-MCP image bouwen
+        run: bash scripts/build-testdata-mcp.sh
+
+      - name: Secrets beschikbaar maken voor de MCP-containers
+        # De servers in .mcp.json lezen .env.mcp via --env-file. Op de runner
+        # bestaat dat bestand niet; we schrijven het uit de secrets. Het staat
+        # in .gitignore en de runner wordt na de run weggegooid.
+        run: |
+          umask 077
+          cat > .env.mcp <<EOF
+          GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+          JIRA_USERNAME=${JIRA_USERNAME}
+          JIRA_API_TOKEN=${JIRA_API_TOKEN}
+          DATABASE_URI=postgresql://tijdwijs_ro:tijdwijs_ro@host.docker.internal:5433/tijdwijs
+          TIJDWIJS_DB_URL=postgresql://tijdwijs:tijdwijs@host.docker.internal:5433/tijdwijs
+          TIJDWIJS_API_URL=http://host.docker.internal:8081
+          EOF
+          echo "::add-mask::${JIRA_API_TOKEN}"
+
+      - name: Applicatiestack starten
+        # De keten heeft een draaiende database en API nodig: de testdata-MCP
+        # laadt via de API en de postgres-MCP introspecteert het schema.
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8081/actuator/health | grep -q UP; then
+              echo "Stack is up."; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error title=Stack start niet::Backend werd niet gezond binnen 5 minuten."
+          exit 1
+
+      - name: Orchestrator draaien
+        # Seam met de ketenlogica (fase 4.2, orchestrator-agent). Het script
+        # krijgt het ticket, de tokencap en de MCP-configuratie mee; wat het
+        # daarna doet staat in .github/agents/orchestrator.agent.md.
+        run: |
+          if [ ! -f scripts/run-orchestrator.sh ]; then
+            echo "::error title=Orchestrator ontbreekt::scripts/run-orchestrator.sh bestaat nog niet. De pipeline-infrastructuur staat er wel; de ketenlogica is fase 4.2. Houd AGENT_ENABLED op 'false' tot dit script er is."
+            exit 1
+          fi
+          bash scripts/run-orchestrator.sh "$ISSUE_KEY"
+
+      - name: Metrics vastleggen
+        if: always()
+        # Ook - juist - bij een mislukte run. Alleen geslaagde runs meten geeft
+        # een vertekend beeld en meet precies het verkeerde.
+        run: |
+          node scripts/metrics-rollup.mjs --validate || \
+            echo "::warning title=Metrics ongeldig::Er staat een meetbestand in dat niet aan schema.json voldoet."
+
+      - name: Logs bewaren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-run-${{ env.ISSUE_KEY }}
+          path: |
+            docs/agent-metrics/
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Opruimen
+        if: always()
+        run: |
+          rm -f .env.mcp
+          docker compose down -v || true
+
+      - name: Escalatie bij mislukking
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "::warning title=Run mislukt::$ISSUE_KEY vereist menselijke aandacht."
+          PR="$(gh pr list --head "agent/$ISSUE_KEY" --json number --jq '.[0].number' 2>/dev/null || true)"
+          if [ -n "$PR" ]; then
+            gh pr edit "$PR" --add-label needs-human
+            gh pr comment "$PR" --body "De agent-run is afgebroken. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
