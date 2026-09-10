@@ -130,3 +130,33 @@ cd frontend && npm install && npm run dev
 
 De Vite-devserver draait op <http://localhost:5173> en proxyt `/api` naar
 `http://localhost:8081`.
+
+## MCP-servers voor GitHub en Jira
+
+`.mcp.json` bevat twee MCP-servers, zodat je AI-tooling bij de repo en het
+KAN-bord kan. Ze draaien in Docker, dus identiek op Windows, macOS en Linux.
+
+Je secrets komen in **`.env.mcp`** in de projectmap. Dat bestand staat in
+`.gitignore` en wordt nooit gecommit. Iedereen maakt zijn eigen versie:
+
+```bash
+cp .env.mcp.example .env.mcp
+```
+
+Vul daarna de drie regels in:
+
+| Variabele | Waar haal je die |
+| --- | --- |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | <https://github.com/settings/tokens/new> - een **classic** token met scope `repo` |
+| `JIRA_USERNAME` | Het e-mailadres waarmee je op Jira inlogt |
+| `JIRA_API_TOKEN` | <https://id.atlassian.com/manage-profile/security/api-tokens> |
+
+> Voor GitHub moet het een **classic** token zijn. Een fine-grained token is
+> gebonden aan je eigen account of een organisatie, en deze repo staat op het
+> persoonlijke account van een teamlid - die kun je daar niet selecteren.
+
+Herstart daarna je editor volledig. In Claude Code controleer je met `/mcp` of
+`github` en `jira` verbonden zijn.
+
+Ontbreekt het bestand, dan zegt de server dat meteen:
+`docker: --env-file: open .env.mcp: The system cannot find the file specified.`
