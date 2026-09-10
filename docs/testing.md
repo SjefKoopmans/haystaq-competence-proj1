@@ -2,11 +2,15 @@
 
 > Status: fase 0 afgerond voor Persoon A (blok 1-4). jacoco/spotless/checkstyle
 > (blok 5) zijn **bewust overgeslagen** — zie "Bewust weggelaten" onderaan.
-> Zie [agentic-workflow-plan.md](agentic-workflow-plan.md) §5 voor de fasering.
+> **Fase 1 (foutcontract & regelbron) is afgerond voor Persoon A** — zie
+> "Fase 1" onderaan. Zie [agentic-workflow-plan.md](agentic-workflow-plan.md)
+> §5 voor de fasering.
 
 Dit document beschrijft hoe de kwaliteitspoort werkt en welk patroon
-testklassen volgen. Het is de overdracht aan Persoon B (integratietests,
-`discovered-rules.md`) en Persoon C (`ci.yml`).
+testklassen volgen. Het is de overdracht aan Persoon B (integratietests) en
+Persoon C (`ci.yml`). `discovered-rules.md` is inmiddels gegenereerd door
+Persoon A in fase 1 (zie onderaan); de applicatielaag-codes blijven bij
+Persoon B.
 
 ## Bouwen en draaien
 
@@ -263,3 +267,42 @@ Niets resteert voor Persoon A binnen fase 0. Vervolgstappen liggen bij
 Persoon B (fase 0.5: Testcontainers, RestAssured, `*IT`) en Persoon C
 (`ci.yml`, branch protection). Items 6 (frontend) en 7 (repo-hygiëne) uit
 `agentic-workflow-plan.md` §5 zijn nog **niet toegewezen** — zie hierboven.
+
+## Fase 1 — Foutcontract & regelbron (Persoon A, afgerond)
+
+Branch `PersoonAfase1`. Lost de tweede blocker uit de nulmeting op: de
+`RestExceptionHandler` gooide alle rule-codes weg, waardoor niemand — mens of
+agent — kon vaststellen welke regel precies was overtreden.
+
+- ✅ **RFC 9457 Problem Details** in `RestExceptionHandler`: de body bevat nu
+  `type`/`title`/`status` en, bij een domeinregel, `code` (de rule-code, bv.
+  `iban.mod97`). `error` en `ref` blijven bestaan zodat de bestaande
+  frontend (`frontend/src/api.ts`, die op `payload?.error`/`payload?.ref`
+  leest) **ongewijzigd** kon blijven. Getest in `RestExceptionHandlerTest`.
+- ✅ **Rule-registry + drift-gate**: `RuleRegistryScanner` (in
+  `backend/src/test/java/.../rules`) leest alle
+  `BusinessRuleViolation.require/requireState/invalid/conflict/notFound`-
+  aanroepen uit `**/domain/**` en genereert daaruit `docs/discovered-rules.md`
+  (110 codes, 20 klassen). `DiscoveredRulesDriftTest` genereert bij elke
+  `mvnw test`/`verify` opnieuw en faalt als het bestand op schijf afwijkt —
+  geen aparte CI-stap nodig, dit loopt gewoon mee in Persoon C's `ci.yml`.
+  Regenereren na een bewuste regelwijziging:
+  `mvnw test -Dtest=DiscoveredRulesDriftTest -Dtijdwijs.rules.write=true`.
+  Scope is bewust beperkt tot de domeinlaag (~79→110 codes, inclusief de
+  gedelegeerde `Employee`-veldnamen); de applicatielaag is Persoon B.
+- ✅ **Mutatiecheck van de drift-gate**: `iban.nl_length` tijdelijk hernoemd
+  naar `iban.nl_length_TEMP_MUTATION` → `DiscoveredRulesDriftTest` faalt
+  direct, teruggedraaid → weer groen. Zelfde bewijspatroon als fase 0.
+- ✅ **`docs/business-rules.md` gecorrigeerd** op de 9 bekende afwijkingen
+  (bonnummer-drempel, contracturen-ondergrens, maximumleeftijd, tarief per
+  contractvorm, max uren per regel, declaratie-vervaltermijn, overwerk,
+  TW-871/`submit.week_incomplete`, verlofregels). Zie het wijzigingslog
+  onderaan dat bestand.
+- **845 tests, `BUILD SUCCESS`** (839 uit fase 0 + 5 in `RestExceptionHandlerTest`
+  + 1 in `DiscoveredRulesDriftTest`).
+
+Niet gedaan (buiten scope van Persoon A, fase 1): frontend-aanpassingen,
+integratietests op de nieuwe foutbody via HTTP (dat kan pas met
+Testcontainers/RestAssured, Persoon B fase 0.5), `ci.yml`-wijzigingen
+(Persoon C — maar er is niets nodig, de drift-gate draait al mee in
+`mvnw verify`).

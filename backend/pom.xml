@@ -137,11 +137,34 @@
                 </executions>
             </plugin>
 
-            <!-- Coverage-gate. Drempel staat nu op 0 en wordt per fase opgetrokken. -->
+            <!--
+              Coverage-gate. Drempel staat nu op 0 en wordt per fase opgetrokken.
+              De <rules> staan bewust op het plugin-niveau (niet genest in de
+              jacoco-check-execution): CI roept `jacoco:check` rechtstreeks via
+              de CLI aan (zie .github/workflows/ci.yml), en een directe
+              CLI-aanroep van een goal negeert executie-specifieke configuratie.
+              Zonder deze verplaatsing faalt de CLI-aanroep met "parameters
+              'rules' ... missing or invalid", ook al is de build via de
+              lifecycle-executie (`mvn verify`) wel in orde.
+            -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
+                <configuration>
+                    <rules>
+                        <rule>
+                            <element>BUNDLE</element>
+                            <limits>
+                                <limit>
+                                    <counter>LINE</counter>
+                                    <value>COVEREDRATIO</value>
+                                    <minimum>${jacoco.line.coverage.min}</minimum>
+                                </limit>
+                            </limits>
+                        </rule>
+                    </rules>
+                </configuration>
                 <executions>
                     <execution>
                         <id>jacoco-prepare-agent</id>
@@ -162,20 +185,6 @@
                         <goals>
                             <goal>check</goal>
                         </goals>
-                        <configuration>
-                            <rules>
-                                <rule>
-                                    <element>BUNDLE</element>
-                                    <limits>
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>${jacoco.line.coverage.min}</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                            </rules>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
