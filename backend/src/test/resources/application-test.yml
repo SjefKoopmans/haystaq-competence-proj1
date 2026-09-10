@@ -1,0 +1,21 @@
+# Testprofiel. De datasource wordt door @ServiceConnection gevuld vanuit de
+# Testcontainer, dus die staat hier bewust niet.
+spring:
+  flyway:
+    enabled: true
+    clean-disabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+tijdwijs:
+  # Rule-codes in de testlogs: bij een falende test wil je weten welke regel
+  # is geraakt. Zolang de API die codes nog niet teruggeeft (Fase 1) is dit de
+  # enige manier om dat vast te stellen.
+  debug-rules: true
+
+logging:
+  level:
+    nl.haystaq: INFO
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
