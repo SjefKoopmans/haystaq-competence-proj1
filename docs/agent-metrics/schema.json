@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SjefKoopmans/haystaq-competence-proj1/docs/agent-metrics/schema.json",
+  "title": "TijdWijs agent-run metrics",
+  "description": "Eén bestand per agent-run. Onbekende waarden zijn null, nooit 0 - het verschil tussen 'geen correcties' en 'nog niet geteld' bepaalt of de rollup klopt.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "issue_key",
+    "ticket_class",
+    "run_id",
+    "started_at",
+    "finished_at",
+    "outcome",
+    "escalated",
+    "retries",
+    "ci_first_attempt_green"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+
+    "issue_key": {
+      "type": "string",
+      "pattern": "^KAN-[0-9]+$",
+      "description": "Jira issue key, bijvoorbeeld KAN-42."
+    },
+    "ticket_class": {
+      "type": "string",
+      "enum": ["bugfix", "validatieregel", "endpoint", "frontend", "migratie", "docs", "overig"],
+      "description": "Autonomieronde 1 is bugfix in één context; latere rondes verbreden dit."
+    },
+
+    "run_id": { "type": "string", "description": "GitHub Actions run id." },
+    "run_url": { "type": ["string", "null"], "format": "uri" },
+    "branch": { "type": ["string", "null"] },
+    "pr_number": { "type": ["integer", "null"] },
+    "pr_url": { "type": ["string", "null"], "format": "uri" },
+
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "duration_seconds": { "type": ["number", "null"], "minimum": 0 },
+
+    "phases": {
+      "type": "array",
+      "description": "Doorlooptijd per ketenfase. Laat weg wat niet is gedraaid.",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "ticket-refiner",
+              "explore",
+              "change-architect",
+              "domain-implementer",
+              "frontend-implementer",
+              "migration-author",
+              "test-author",
+              "rules-keeper",
+              "code-reviewer",
+              "pr-author",
+              "pr-gatekeeper",
+              "failure-triager",
+              "jira-scribe",
+              "metrics-collector"
+            ]
+          },
+          "status": { "type": "string", "enum": ["ok", "escalated", "failed", "skipped"] },
+          "duration_seconds": { "type": ["number", "null"], "minimum": 0 }
+        }
+      }
+    },
+
+    "tokens": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "input": { "type": ["integer", "null"], "minimum": 0 },
+        "output": { "type": ["integer", "null"], "minimum": 0 },
+        "total": { "type": ["integer", "null"], "minimum": 0 },
+        "estimated_cost_eur": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+
+    "retries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2,
+      "description": "Hard plafond van twee. Een waarde erboven betekent dat het plafond niet werkt."
+    },
+    "ci_first_attempt_green": {
+      "type": ["boolean", "null"],
+      "description": "Was CI groen bij de eerste poging? Meet de bouwketen, niet de triager."
+    },
+
+    "diff": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "files_changed": { "type": ["integer", "null"], "minimum": 0 },
+        "lines_added": { "type": ["integer", "null"], "minimum": 0 },
+        "lines_removed": { "type": ["integer", "null"], "minimum": 0 },
+        "bounded_contexts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["personeel", "projecten", "urenregistratie", "declaraties", "rapportage", "shared", "frontend", "ci", "docs"]
+          }
+        }
+      }
+    },
+
+    "outcome": {
+      "type": "string",
+      "enum": ["merged", "in-review", "needs-human", "failed", "aborted"],
+      "description": "Waar de run eindigde. 'needs-human' is een geldig eindresultaat, geen mislukking."
+    },
+    "escalated": { "type": "boolean" },
+    "escalation_reason": {
+      "type": ["string", "null"],
+      "enum": [
+        "ambigu-ticket",
+        "meerdere-contexten",
+        "migratie-met-dataverlies",
+        "security-of-auth",
+        "architectuurwijziging",
+        "te-grote-diff",
+        "twee-retries-mislukt",
+        "gatekeeper-twee-rondes",
+        "infrastructuur",
+        "kill-switch",
+        "kostenplafond",
+        "timeout",
+        null
+      ]
+    },
+
+    "gatekeeper": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "advice": { "type": ["string", "null"], "enum": ["APPROVE", "COMMENT", "REQUEST_CHANGES", null] },
+        "confidence": { "type": ["string", "null"], "enum": ["hoog", "midden", "laag", null] },
+        "rounds": { "type": ["integer", "null"], "minimum": 0, "maximum": 2 },
+        "findings": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "blocker": { "type": ["integer", "null"], "minimum": 0 },
+            "belangrijk": { "type": ["integer", "null"], "minimum": 0 },
+            "suggestie": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "false_negatives": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Bevindingen die de mens ná de gatekeeper-review nog toevoegde. null tot de menselijke review is gedaan."
+        },
+        "false_positives": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Bevindingen die de mens verwierp. null tot de menselijke review is gedaan."
+        }
+      }
+    },
+
+    "human_correction_commits": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Commits van mensen op de branch ná de eerste gatekeeper-review. De belangrijkste metric van het project. null tot de merge."
+    },
+    "merged_at": { "type": ["string", "null"], "format": "date-time" },
+
+    "notes": {
+      "type": ["string", "null"],
+      "maxLength": 500,
+      "description": "Alleen als een cijfer zonder context misleidt. Geen ticketinhoud, geen code, geen persoonsnamen."
+    }
+  }
+}
