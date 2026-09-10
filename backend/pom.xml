@@ -26,7 +26,7 @@
           meer accepteert: /info antwoordt dan met HTTP 400 en een lege payload,
           waarna Testcontainers meldt "Could not find a valid Docker environment".
         -->
-        <testcontainers.version>1.21.3</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <!-- Startdrempel bewust laag: per fase optrekken (zie docs/agentic-workflow-plan.md F0.2). -->
         <jacoco.line.coverage.min>0.00</jacoco.line.coverage.min>
     </properties>
