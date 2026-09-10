@@ -21,13 +21,15 @@ Zie [docs/architecture.md](docs/architecture.md) voor de indeling in contexten,
 aggregates en poorten.
 
 > **Parallel spoor: agentic delivery pipeline.** Naast opdracht 1 loopt er een
-> fase-0-kwaliteitspoort voor het plan in
+> fase-0/1-kwaliteitspoort voor het plan in
 > [docs/agentic-workflow-plan.md](docs/agentic-workflow-plan.md)
 > ([agent-catalogus.md](docs/agent-catalogus.md) voor de agents/skills-indeling).
-> Rolverdeling en status: **Persoon A** (backend unit-/aggregate-tests, klaar),
-> **Persoon B** (integratietests, `discovered-rules.md`), **Persoon C**
-> (`ci.yml`, branch protection) — zie [docs/testing.md](docs/testing.md) voor
-> de volledige overdracht. Dit staat momenteel op branch `PersoonA`.
+> Rolverdeling en status: **Persoon A** (backend unit-/aggregate-tests +
+> fase 1 foutcontract/regelbron, klaar), **Persoon B** (integratietests),
+> **Persoon C** (`ci.yml`, branch protection) — zie
+> [docs/testing.md](docs/testing.md) voor de volledige overdracht en
+> [docs/discovered-rules.md](docs/discovered-rules.md) voor de gegenereerde
+> regelbron. Dit staat momenteel op branch `PersoonAfase1`.
 
 ## Snel starten
 
