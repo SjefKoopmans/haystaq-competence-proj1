@@ -12,18 +12,21 @@
 #   bash scripts/run-orchestrator.sh <ISSUE_KEY>
 #
 # Vereiste omgevingsvariabelen (zie agent-delivery.yml):
-#   ANTHROPIC_API_KEY              - voor de Copilot CLI/agent-runtime
 #   GITHUB_PERSONAL_ACCESS_TOKEN   - voor de GitHub MCP
 #   JIRA_USERNAME, JIRA_API_TOKEN  - voor de Jira MCP
+#   ANTHROPIC_API_KEY              - alleen voor Claude Code als runtime
 #   AGENT_TOKEN_CAP                - harde tokengrens, doorgegeven aan de agent
+#   ORCHESTRATOR_MODEL             - optioneel, standaard claude-opus-5
 #
-# Contract met de agent-runtime (één van beide moet werken):
-#   1. de GitHub Copilot CLI is beschikbaar als `copilot` en ondersteunt
-#      --agent-file + --prompt voor een non-interactieve run;
-#   2. of er bestaat een lokale runner die dezelfde interface biedt
-#      (override via ORCHESTRATOR_RUNNER_CMD, zie hieronder).
+# Contract met de agent-runtime (één van drieën moet werken):
+#   1. ORCHESTRATOR_RUNNER_CMD wijst naar een CLI die de Claude Code-vlaggen
+#      begrijpt (--print, --mcp-config, --append-system-prompt);
+#   2. of `claude` (Claude Code CLI) staat op de machine — dit is de standaard
+#      en de enige die ANTHROPIC_API_KEY gebruikt;
+#   3. of `copilot` (GitHub Copilot CLI) staat op de machine. Die authenticeert
+#      op een GitHub-token, niet op een Anthropic-sleutel.
 #
-# Zolang geen van beide beschikbaar is, faalt dit script met een duidelijke
+# Zolang geen van drieën beschikbaar is, faalt dit script met een duidelijke
 # melding in plaats van een agent te simuleren — een orchestrator die niet
 # echt draait mag nooit een groene stap lijken.
 
@@ -66,10 +69,49 @@ log "Tokencap: $TOKEN_CAP"
 log "Agent-definitie: $AGENT_FILE"
 log "Metrics-bestand: $METRICS_FILE"
 
+# Welke agent-runtime draait de keten? Drie mogelijkheden, in deze volgorde:
+#
+#   1. ORCHESTRATOR_RUNNER_CMD - expliciete override, bijvoorbeeld een
+#      self-hosted runner met een eigen CLI. Mag meerdere woorden bevatten
+#      ("npx @scope/cli"). Moet de Claude Code-vlaggen begrijpen.
+#   2. claude  - Claude Code CLI. Past bij ANTHROPIC_API_KEY.
+#   3. copilot - GitHub Copilot CLI. Let op: die authenticeert op een
+#      GitHub-token en gebruikt ANTHROPIC_API_KEY niet.
+#
+# De runtime wordt vóór de secret-check bepaald, want welke secrets nodig zijn
+# hangt ervan af.
+declare -a RUNNER=()
+RUNNER_KIND=""
+
+if [ -n "${ORCHESTRATOR_RUNNER_CMD:-}" ]; then
+  # Woordsplitsing is hier gewenst; de variable is een commando, geen pad.
+  read -r -a RUNNER <<< "$ORCHESTRATOR_RUNNER_CMD"
+  RUNNER_KIND="custom"
+  if ! command -v "${RUNNER[0]}" >/dev/null 2>&1; then
+    fail "Agent-runtime niet uitvoerbaar" \
+      "ORCHESTRATOR_RUNNER_CMD begint met '${RUNNER[0]}' en dat is geen uitvoerbaar commando op deze machine. De variable moet een commando zijn, geen zin."
+  fi
+elif command -v claude >/dev/null 2>&1; then
+  RUNNER=(claude)
+  RUNNER_KIND="claude"
+elif command -v copilot >/dev/null 2>&1; then
+  RUNNER=(copilot)
+  RUNNER_KIND="copilot"
+else
+  fail "Geen agent-runtime gevonden" \
+    "Geen 'claude' (Claude Code CLI), geen 'copilot' (GitHub Copilot CLI) en geen ORCHESTRATOR_RUNNER_CMD. Installeer er een op de runner: npm install -g @anthropic-ai/claude-code"
+fi
+
 # Vereiste secrets moeten bestaan, ook al staat de waarde niet in de logs.
-for VAR in ANTHROPIC_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN JIRA_USERNAME JIRA_API_TOKEN; do
+# Welke dat zijn hangt af van de runtime: de Copilot CLI doet niets met een
+# Anthropic-sleutel, en die dan eisen levert een verwarrende fout op.
+REQUIRED_VARS=(GITHUB_PERSONAL_ACCESS_TOKEN JIRA_USERNAME JIRA_API_TOKEN)
+if [ "$RUNNER_KIND" != "copilot" ]; then
+  REQUIRED_VARS+=(ANTHROPIC_API_KEY)
+fi
+for VAR in "${REQUIRED_VARS[@]}"; do
   if [ -z "${!VAR:-}" ]; then
-    fail "Ontbrekende omgevingsvariabele" "$VAR is niet gezet. Zie agent-delivery.yml env-block."
+    fail "Ontbrekende omgevingsvariabele" "$VAR is niet gezet. Zie het env-blok in .github/workflows/agent-delivery.yml. Lokaal: 'set -a && . ./.env.mcp && set +a', plus ANTHROPIC_API_KEY."
   fi
 done
 
@@ -77,16 +119,6 @@ done
 # gedragsregels (volgorde, escalatie, kill switch, concurrency) staan al in
 # het agent-bestand zelf - dit script herhaalt ze bewust niet.
 PROMPT="Jira ticket ${ISSUE_KEY}. Voer de volledige keten uit zoals beschreven in .github/agents/orchestrator.agent.md. Tokenplafond voor deze run: ${TOKEN_CAP}. Lever een groene PR met Jira-link op, of escaleer met needs-human en een concrete diagnose."
-
-RUNNER_CMD="${ORCHESTRATOR_RUNNER_CMD:-}"
-if [ -z "$RUNNER_CMD" ]; then
-  if command -v copilot >/dev/null 2>&1; then
-    RUNNER_CMD="copilot"
-  else
-    fail "Geen agent-runtime gevonden" \
-      "Noch 'copilot' (GitHub Copilot CLI) noch ORCHESTRATOR_RUNNER_CMD is beschikbaar. Installeer de Copilot CLI op de runner, of zet ORCHESTRATOR_RUNNER_CMD op een compatibel commando."
-  fi
-fi
 
 write_metrics() {
   local OUTCOME="$1" ESCALATED="$2" REASON="$3" FINISHED_AT
@@ -108,15 +140,34 @@ write_metrics() {
 JSON
 }
 
-log "Orchestrator starten via: $RUNNER_CMD"
+MODEL="${ORCHESTRATOR_MODEL:-claude-opus-5}"
+
+log "Orchestrator starten via: ${RUNNER[*]} (${RUNNER_KIND})"
 
 set +e
-"$RUNNER_CMD" \
-  --agent-file "$AGENT_FILE" \
-  --mcp-config "$MCP_CONFIG" \
-  --allow-tool 'github' \
-  --allow-tool 'atlassian' \
-  --prompt "$PROMPT"
+case "$RUNNER_KIND" in
+  claude|custom)
+    # De catalogus zet de agents in .github/agents/ (Copilot/VS Code-conventie).
+    # Claude Code zoekt ze in .claude/agents/, dus de orchestrator-definitie
+    # gaat hier als systeemprompt mee. Dat start de orchestrator, maar zijn
+    # subagents vindt Claude Code zo niet - zie docs/agent-pipeline.md.
+    "${RUNNER[@]}" \
+      --print \
+      --model "$MODEL" \
+      --mcp-config "$MCP_CONFIG" \
+      --append-system-prompt "$(cat "$AGENT_FILE")" \
+      --permission-mode bypassPermissions \
+      "$PROMPT"
+    ;;
+  copilot)
+    "${RUNNER[@]}" \
+      --agent-file "$AGENT_FILE" \
+      --mcp-config "$MCP_CONFIG" \
+      --allow-tool 'github' \
+      --allow-tool 'atlassian' \
+      --prompt "$PROMPT"
+    ;;
+esac
 STATUS=$?
 set -e
 

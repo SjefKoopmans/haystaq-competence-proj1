@@ -86,15 +86,68 @@ klaar (stack, MCP-image, secrets, tokencap); dit script start daarna de
 de tokencap en de MCP-configuratie, en schrijft na afloop een metrics-bestand
 volgens `docs/agent-metrics/schema.json`.
 
-Vereist op de runner: de GitHub Copilot CLI als `copilot`, of een compatibel
-commando via `ORCHESTRATOR_RUNNER_CMD`. Ontbreekt beide, dan faalt het script
-met een expliciete melding — het simuleert nooit een geslaagde run.
+### Welke agent-runtime draait de keten
 
-Lokaal testen (buiten de workflow, met de juiste env-variabelen gezet):
+Het script kiest in deze volgorde. Is er geen enkele, dan faalt het met een
+expliciete melding — het simuleert nooit een geslaagde run.
+
+| # | Runtime | Authenticatie | Wanneer |
+| --- | --- | --- | --- |
+| 1 | `ORCHESTRATOR_RUNNER_CMD` | afhankelijk van de CLI | Self-hosted runner met een eigen runtime. Moet de Claude Code-vlaggen begrijpen (`--print`, `--mcp-config`, `--append-system-prompt`) |
+| 2 | `claude` (Claude Code CLI) | `ANTHROPIC_API_KEY` | Standaard. De workflow installeert hem met `npm install -g @anthropic-ai/claude-code` |
+| 3 | `copilot` (GitHub Copilot CLI) | GitHub-token, **niet** de Anthropic-sleutel | Alleen als hij al op de machine staat |
+
+Twee dingen om te weten:
+
+- **Een GitHub-hosted runner heeft geen van beide CLI's aan boord.** Daarom
+  installeert de workflow er zelf één. Zet je `ORCHESTRATOR_RUNNER_CMD`, dan
+  wordt die stap overgeslagen — dan breng je je eigen runtime mee.
+- **`ORCHESTRATOR_RUNNER_CMD` moet een commando zijn, geen zin.** Het eerste
+  woord wordt uitgevoerd; het script controleert dat vooraf en zegt het meteen
+  als het geen uitvoerbaar commando is.
+
+Het model staat standaard op `claude-opus-5`, te wisselen met repo-variable
+`ORCHESTRATOR_MODEL`.
+
+### Openstaand: de subagents worden nog niet gevonden
+
+De catalogus zet alle agents in `.github/agents/*.agent.md` — de conventie van
+Copilot en VS Code. **Claude Code zoekt ze in `.claude/agents/`.** De
+orchestrator zelf start wél (zijn definitie gaat als systeemprompt mee), maar
+zijn subagents — `ticket-refiner`, `domain-implementer`, `pr-gatekeeper` en de
+rest — ziet Claude Code op die plek niet staan.
+
+Drie manieren om dat op te lossen:
+
+1. **Spiegel de agents naar `.claude/agents/`** en commit ze. Twee locaties met
+   dezelfde inhoud is lelijk, maar het werkt vandaag en beide conventies
+   blijven bruikbaar.
+2. **Verhuis ze naar `.claude/agents/`** en pas de catalogus aan. Eén bron van
+   waarheid, maar de VS Code/Copilot-route vervalt.
+3. **Draai op de Copilot CLI**, zoals oorspronkelijk ontworpen. Dan klopt de
+   mappenstructuur, maar `ANTHROPIC_API_KEY` doet niets meer en de runner moet
+   die CLI hebben.
+
+Dit is een teambesluit, geen bug. Tot het genomen is, doet de orchestrator zijn
+werk alleen — hij delegeert niet.
+
+### Lokaal testen
+
+Buiten de workflow, met de juiste variabelen gezet:
 
 ```bash
+set -a && . ./.env.mcp && set +a
+export ANTHROPIC_API_KEY=...
 bash scripts/run-orchestrator.sh KAN-42
 ```
+
+Alleen controleren of de aanroep klopt, zonder een echte agent te starten:
+
+```bash
+ORCHESTRATOR_RUNNER_CMD=echo bash scripts/run-orchestrator.sh KAN-42
+```
+
+Dat print exact het commando dat de runtime zou krijgen.
 
 Zet `AGENT_ENABLED` pas op `true` nadat je dit één keer met een testticket
 hebt gedraaid — infrastructuur eerst, dan de keten in het echt aanzetten.
