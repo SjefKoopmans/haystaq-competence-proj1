@@ -20,6 +20,15 @@ strenge en deels ongedocumenteerde business rules, en **nietszeggende foutmeldin
 Zie [docs/architecture.md](docs/architecture.md) voor de indeling in contexten,
 aggregates en poorten.
 
+> **Parallel spoor: agentic delivery pipeline.** Naast opdracht 1 loopt er een
+> fase-0-kwaliteitspoort voor het plan in
+> [docs/agentic-workflow-plan.md](docs/agentic-workflow-plan.md)
+> ([agent-catalogus.md](docs/agent-catalogus.md) voor de agents/skills-indeling).
+> Rolverdeling en status: **Persoon A** (backend unit-/aggregate-tests, klaar),
+> **Persoon B** (integratietests, `discovered-rules.md`), **Persoon C**
+> (`ci.yml`, branch protection) — zie [docs/testing.md](docs/testing.md) voor
+> de volledige overdracht. Dit staat momenteel op branch `PersoonA`.
+
 ## Snel starten
 
 Vereist: Docker Desktop (of Docker Engine + Compose v2). Verder niets - Java,

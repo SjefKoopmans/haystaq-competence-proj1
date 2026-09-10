@@ -230,6 +230,25 @@ nodig is als verplichte CI-check.
   build op een unit-test binnen een minuut in plaats van na Testcontainers.
 - Publiceer `backend/target/surefire-reports/*.xml` als testrapport; die
   bevatten de rule-code in de faalmelding, wat `failure-triager` nodig heeft.
+- Checkstyle is optioneel toe te voegen als losstaande check (zie "Bewust
+  weggelaten uit fase 0"); niet blokkerend voor de eerste groene pipeline.
+
+## Nog niet toegewezen (fase 0, item 6 en 7)
+
+Twee punten uit `agentic-workflow-plan.md` §5 hebben nog **geen eigenaar**.
+Ze zijn klein, onafhankelijk van het backend-werk van A/B, en kunnen door wie
+als eerste tijd heeft:
+
+- **Item 6 — Frontend-kwaliteitspoort**: vitest + testing-library + eslint +
+  prettier + `tsc --noEmit` in `frontend/`. Nu is er alleen `dev`/`build`/
+  `preview` in `package.json`.
+- **Item 7 — Repo-hygiëne**: `.editorconfig`, `CODEOWNERS`, PR-template met
+  een agent-checklist (nodig zodra `pr-author`/`pr-gatekeeper` uit
+  `agent-catalogus.md` gebouwd worden).
+
+Zonder deze twee is fase 0 niet volledig af, maar ze blokkeren `ci.yml`
+(Persoon C, item 8) niet: die kan starten met alleen backend-checks en later
+frontend-stappen toevoegen.
 
 ## Status: fase 0 voor Persoon A is afgerond
 
@@ -242,4 +261,5 @@ nodig is als verplichte CI-check.
 
 Niets resteert voor Persoon A binnen fase 0. Vervolgstappen liggen bij
 Persoon B (fase 0.5: Testcontainers, RestAssured, `*IT`) en Persoon C
-(`ci.yml`, branch protection).
+(`ci.yml`, branch protection). Items 6 (frontend) en 7 (repo-hygiëne) uit
+`agentic-workflow-plan.md` §5 zijn nog **niet toegewezen** — zie hierboven.
