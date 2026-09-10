@@ -91,6 +91,10 @@ jobs:
     env:
       ISSUE_KEY: ${{ needs.guard.outputs.issue_key }}
       AGENT_TOKEN_CAP: ${{ vars.AGENT_TOKEN_CAP || '1500000' }}
+      # Repo-variables zijn géén omgevingsvariabelen: zonder deze twee regels
+      # bereikt de instelling run-orchestrator.sh nooit.
+      ORCHESTRATOR_RUNNER_CMD: ${{ vars.ORCHESTRATOR_RUNNER_CMD }}
+      ORCHESTRATOR_MODEL: ${{ vars.ORCHESTRATOR_MODEL || 'claude-opus-5' }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GITHUB_PERSONAL_ACCESS_TOKEN: ${{ github.token }}
       JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
@@ -111,6 +115,19 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Agent-runtime installeren
+        # Een GitHub-hosted runner heeft géén agent-CLI aan boord: niet de
+        # Copilot CLI en niet Claude Code. Zonder deze stap faalt
+        # run-orchestrator.sh op "geen agent-runtime gevonden" — precies de
+        # fout die de eerste echte run opleverde.
+        #
+        # Overslaan gebeurt alleen als ORCHESTRATOR_RUNNER_CMD is gezet: dan
+        # brengt de runner zijn eigen runtime mee (self-hosted, punt B5).
+        if: env.ORCHESTRATOR_RUNNER_CMD == ''
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude --version
 
       - name: Testdata-MCP image bouwen
         run: bash scripts/build-testdata-mcp.sh
