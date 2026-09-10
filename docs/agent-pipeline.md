@@ -78,15 +78,26 @@ draait, en het zijn precies de dingen die je niet aan een agent overlaat:
    dezelfde branch schrijven. Een tweede run wacht; hij annuleert de eerste
    niet, want die heeft mogelijk al gepusht.
 
-## Wat er nog niet is
+## `scripts/run-orchestrator.sh`
 
-`scripts/run-orchestrator.sh` — de seam waar de workflow de ketenlogica
-aanroept. De workflow zet de omgeving klaar (stack, MCP-image, secrets,
-tokencap) en faalt met een expliciete melding zolang dat script ontbreekt.
+De seam waar de workflow de ketenlogica aanroept. De workflow zet de omgeving
+klaar (stack, MCP-image, secrets, tokencap); dit script start daarna de
+`orchestrator`-agent (`.github/agents/orchestrator.agent.md`) met het ticket,
+de tokencap en de MCP-configuratie, en schrijft na afloop een metrics-bestand
+volgens `docs/agent-metrics/schema.json`.
 
-Houd `AGENT_ENABLED` op `false` tot het er is. Dat is geen tijdelijke
-noodgreep maar de bedoelde volgorde uit het plan: infrastructuur eerst, keten
-daarna.
+Vereist op de runner: de GitHub Copilot CLI als `copilot`, of een compatibel
+commando via `ORCHESTRATOR_RUNNER_CMD`. Ontbreekt beide, dan faalt het script
+met een expliciete melding — het simuleert nooit een geslaagde run.
+
+Lokaal testen (buiten de workflow, met de juiste env-variabelen gezet):
+
+```bash
+bash scripts/run-orchestrator.sh KAN-42
+```
+
+Zet `AGENT_ENABLED` pas op `true` nadat je dit één keer met een testticket
+hebt gedraaid — infrastructuur eerst, dan de keten in het echt aanzetten.
 
 ## Als er iets misgaat
 
