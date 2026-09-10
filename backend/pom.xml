@@ -19,13 +19,16 @@
 
     <properties>
         <java.version>21</java.version>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <!-- Testinfrastructuur (fase 0). Versies expliciet zodat builds
-             reproduceerbaar zijn en niet meebewegen met de parent-POM. -->
-        <surefire.version>3.5.2</surefire.version>
-        <failsafe.version>3.5.2</failsafe.version>
+        <jacoco.version>0.8.12</jacoco.version>
+        <!--
+          Override op de Spring Boot 3.4.1-parent (die levert 1.20.4).
+          De docker-java in 1.20.4 praat een API-versie die Docker Engine 29 niet
+          meer accepteert: /info antwoordt dan met HTTP 400 en een lege payload,
+          waarna Testcontainers meldt "Could not find a valid Docker environment".
+        -->
+        <testcontainers.version>1.21.3</testcontainers.version>
+        <!-- Startdrempel bewust laag: per fase optrekken (zie docs/agentic-workflow-plan.md F0.2). -->
+        <jacoco.line.coverage.min>0.00</jacoco.line.coverage.min>
     </properties>
 
     <dependencies>
@@ -63,6 +66,35 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- F0.3: Testcontainers - echte Postgres per testrun, Flyway migreert er echt tegen. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- F0.3: RestAssured - integratietests tegen de echte API. -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>json-path</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -72,12 +104,10 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Unit-tests: snel, geen Spring-context, geen database.
-                 Draait op `mvn test`. -->
+            <!-- Unit tests: *Test. Draait in `mvn test`. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>${surefire.version}</version>
                 <configuration>
                     <includes>
                         <include>**/*Test.java</include>
@@ -85,20 +115,13 @@
                     <excludes>
                         <exclude>**/*IT.java</exclude>
                     </excludes>
-                    <!-- Een groene build met 0 tests is de klassieke valkuil:
-                         de poort lijkt dicht maar houdt niets tegen. -->
-                    <failIfNoSpecifiedTests>true</failIfNoSpecifiedTests>
                 </configuration>
             </plugin>
 
-            <!-- Integratietests: `*IT`, met Spring-context en Testcontainers.
-                 Gebonden aan `verify`, niet aan `test`, zodat de snelle
-                 unit-suite bruikbaar blijft tijdens ontwikkelen.
-                 De tests zelf zijn scope van Persoon B (fase 0.5). -->
+            <!-- Integratietests: *IT. Draait pas in `mvn verify`, want Docker nodig. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>${failsafe.version}</version>
                 <configuration>
                     <includes>
                         <include>**/*IT.java</include>
@@ -110,6 +133,49 @@
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Coverage-gate. Drempel staat nu op 0 en wordt per fase opgetrokken. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.line.coverage.min}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

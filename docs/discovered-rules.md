@@ -1,120 +1,130 @@
 # Discovered rules
 
-> **Gegenereerd bestand — niet handmatig wijzigen.** Gemaakt door `RuleRegistryScanner` op basis van `BusinessRuleViolation`-aanroepen in `backend/src/main/java/**/domain/**`. Regenereer met de test `DiscoveredRulesDriftTest` (draait mee in `mvnw test`).
->
-> Scope: alleen de domeinlaag (~79 codes). De ~30 codes in de applicatielaag (`*Service`) staan hier niet in — die zijn fase 0.5 (Persoon B, integratietests).
+Automatisch gegenereerd door `RuleRegistryScanner` (Fase 1, F1.2) uit alle
+`BusinessRuleViolation`-aanroepen in `backend/src/main/java`. **Niet handmatig
+wijzigen** - regenereer via `RuleRegistryDocGenerator` en commit het resultaat.
 
-Totaal: 110 rule-codes in 20 klassen.
-
-| Klasse | Code | Kind | HTTP |
-| --- | --- | --- | --- |
-| `declaraties.domain.ExpenseClaim` | `amount.category_limit` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `amount.missing` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `category.missing` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `category.unknown` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `currency.unknown` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `description.foreign_currency` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `employee_id.missing` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `expense_date.future` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `expense_date.missing` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `expense_date.stale` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `receipt_reference.required` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `status.not_decidable` | CONFLICT | 409 |
-| `declaraties.domain.ExpenseClaim` | `status.not_payable` | CONFLICT | 409 |
-| `declaraties.domain.ExpenseClaim` | `status.not_submittable` | CONFLICT | 409 |
-| `declaraties.domain.ExpenseClaim` | `vat_rate.category` | INVALID_INPUT | 400 |
-| `declaraties.domain.ExpenseClaim` | `vat_rate.unknown` | INVALID_INPUT | 400 |
-| `personeel.domain.ContractType` | `contract_type.missing` | INVALID_INPUT | 400 |
-| `personeel.domain.ContractType` | `contract_type.unknown` | INVALID_INPUT | 400 |
-| `personeel.domain.ContractType` | `freelance.rate` | INVALID_INPUT | 400 |
-| `personeel.domain.ContractType` | `intern.rate` | INVALID_INPUT | 400 |
-| `personeel.domain.EmailAddress` | `email.format` | INVALID_INPUT | 400 |
-| `personeel.domain.EmailAddress` | `email.length` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `age.maximum` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `age.minimum` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `birth_date.missing` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `contract_hours.max` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `contract_hours.missing` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `contract_hours.step` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `employee.employment_ended` | CONFLICT | 409 |
-| `personeel.domain.Employee` | `employee.inactive` | CONFLICT | 409 |
-| `personeel.domain.Employee` | `first_name` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `last_name` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `manager.self` | CONFLICT | 409 |
-| `personeel.domain.Employee` | `phone.format` | INVALID_INPUT | 400 |
-| `personeel.domain.Employee` | `work_date.after_employment` | CONFLICT | 409 |
-| `personeel.domain.Employee` | `work_date.before_hire` | CONFLICT | 409 |
-| `personeel.domain.EmployeeCode` | `employee_code.format` | INVALID_INPUT | 400 |
-| `personeel.domain.EmploymentPeriod` | `end_date.order` | INVALID_INPUT | 400 |
-| `personeel.domain.EmploymentPeriod` | `hire_date.future` | INVALID_INPUT | 400 |
-| `personeel.domain.EmploymentPeriod` | `hire_date.missing` | INVALID_INPUT | 400 |
-| `personeel.domain.EmploymentPeriod` | `hire_date.range` | INVALID_INPUT | 400 |
-| `personeel.domain.Iban` | `iban.format` | INVALID_INPUT | 400 |
-| `personeel.domain.Iban` | `iban.missing` | INVALID_INPUT | 400 |
-| `personeel.domain.Iban` | `iban.mod97` | INVALID_INPUT | 400 |
-| `personeel.domain.Iban` | `iban.nl_length` | INVALID_INPUT | 400 |
-| `projecten.domain.Client` | `contact_email` | INVALID_INPUT | 400 |
-| `projecten.domain.Client` | `country` | INVALID_INPUT | 400 |
-| `projecten.domain.Client` | `name` | INVALID_INPUT | 400 |
-| `projecten.domain.Client` | `payment_term_days` | INVALID_INPUT | 400 |
-| `projecten.domain.Client` | `vat_number` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `billable.rate_required` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `client_id.missing` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `code.year_mismatch` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `end_date.order` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `name` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `project.closed` | CONFLICT | 409 |
-| `projecten.domain.Project` | `project.no_tasks` | CONFLICT | 409 |
-| `projecten.domain.Project` | `project.not_active` | CONFLICT | 409 |
-| `projecten.domain.Project` | `start_date.missing` | INVALID_INPUT | 400 |
-| `projecten.domain.Project` | `status.transition` | CONFLICT | 409 |
-| `projecten.domain.Project` | `task.duplicate` | CONFLICT | 409 |
-| `projecten.domain.Project` | `work_date.after_project` | CONFLICT | 409 |
-| `projecten.domain.Project` | `work_date.before_project` | CONFLICT | 409 |
-| `projecten.domain.ProjectCode` | `code.format` | INVALID_INPUT | 400 |
-| `projecten.domain.ProjectMember` | `employee_id.missing` | INVALID_INPUT | 400 |
-| `projecten.domain.ProjectMember` | `role.unknown` | INVALID_INPUT | 400 |
-| `projecten.domain.ProjectStatus` | `status.unknown` | INVALID_INPUT | 400 |
-| `projecten.domain.ProjectTask` | `name` | INVALID_INPUT | 400 |
-| `projecten.domain.ProjectTask` | `rate_override.not_billable` | INVALID_INPUT | 400 |
-| `shared.domain.Hours` | `hours.missing` | INVALID_INPUT | 400 |
-| `shared.domain.Hours` | `hours.positive` | INVALID_INPUT | 400 |
-| `shared.domain.Hours` | `hours.step` | INVALID_INPUT | 400 |
-| `shared.domain.IsoWeek` | `iso_week.not_in_year` | INVALID_INPUT | 400 |
-| `shared.domain.IsoWeek` | `iso_week.range` | INVALID_INPUT | 400 |
-| `shared.domain.IsoWeek` | `iso_year.range` | INVALID_INPUT | 400 |
-| `shared.domain.Money` | `money.missing` | INVALID_INPUT | 400 |
-| `shared.domain.Money` | `money.negative` | INVALID_INPUT | 400 |
-| `shared.domain.Money` | `money.scale` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `absence_type.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `absence_type.unknown` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `date.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `date.order` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `duration.max` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `employee_id.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `hours_per_day.range` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `hours_per_day.step` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `sick.retroactive` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Absence` | `special.reason_required` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.EntryType` | `entry_type.unknown` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.TimeEntry` | `description.length` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.TimeEntry` | `description.required_non_billable` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.TimeEntry` | `hours.max` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.TimeEntry` | `task_id.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.TimeEntry` | `work_date.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Timesheet` | `approver.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Timesheet` | `approver.not_authorised` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `approver.self` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `comment.required` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Timesheet` | `day.max_hours` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `employee_id.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Timesheet` | `entry.missing` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `overtime.before_contract_hours` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `status.not_approvable` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `status.not_rejectable` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `status.not_submittable` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `submit.no_entries` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `submit.week_incomplete` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `timesheet.locked` | CONFLICT | 409 |
-| `urenregistratie.domain.Timesheet` | `week.missing` | INVALID_INPUT | 400 |
-| `urenregistratie.domain.Timesheet` | `work_date.outside_week` | INVALID_INPUT | 400 |
+| Code | Kind | Vindplaats |
+| --- | --- | --- |
+| `absence.full_day` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:100` |
+| `absence.missing` | NOT_FOUND | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:221` |
+| `absence.overlap` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:203` |
+| `absence_type.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:35` |
+| `absence_type.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:39` |
+| `action.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/application/ExpenseClaimService.java:63` |
+| `age.maximum` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:182` |
+| `age.minimum` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:180` |
+| `amount.category_limit` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:133` |
+| `amount.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/application/ExpenseClaimService.java:38` |
+| `approver.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:137` |
+| `approver.not_authorised` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:125` |
+| `approver.self` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:124` |
+| `billable.rate_required` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:88` |
+| `birth_date.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:179` |
+| `category.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:44` |
+| `category.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:48` |
+| `claim.missing` | NOT_FOUND | `nl/haystaq/tijdwijs/declaraties/application/ExpenseClaimService.java:56` |
+| `client.duplicate` | CONFLICT | `nl/haystaq/tijdwijs/projecten/application/ProjectenService.java:54` |
+| `client.inactive` | CONFLICT | `nl/haystaq/tijdwijs/projecten/application/ProjectenService.java:74` |
+| `client.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/application/ProjectenService.java:73` |
+| `client_id.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:83` |
+| `code.duplicate` | CONFLICT | `nl/haystaq/tijdwijs/projecten/application/ProjectenService.java:70` |
+| `code.format` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/ProjectCode.java:16` |
+| `code.year_mismatch` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:87` |
+| `comment.required` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:133` |
+| `contact_email` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Client.java:55` |
+| `contract_hours.max` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:188` |
+| `contract_hours.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:187` |
+| `contract_hours.step` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:189` |
+| `contract_type.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/ContractType.java:18` |
+| `contract_type.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/ContractType.java:22` |
+| `country` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Client.java:58` |
+| `currency.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:125` |
+| `date.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:199` |
+| `date.order` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:81` |
+| `day.max_hours` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:95` |
+| `description.foreign_currency` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:142` |
+| `description.length` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/TimeEntry.java:63` |
+| `description.required_non_billable` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/TimeEntry.java:65` |
+| `duration.max` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:82` |
+| `email.duplicate` | CONFLICT | `nl/haystaq/tijdwijs/personeel/application/EmployeeService.java:64` |
+| `email.format` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmailAddress.java:16` |
+| `email.length` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmailAddress.java:15` |
+| `employee.cannot_book_on_date` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:91` |
+| `employee.employment_ended` | CONFLICT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:153` |
+| `employee.inactive` | CONFLICT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:164` |
+| `employee.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/application/ExpenseClaimService.java:37` |
+| `employee.not_member` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:89` |
+| `employee_code.duplicate` | CONFLICT | `nl/haystaq/tijdwijs/personeel/application/EmployeeService.java:63` |
+| `employee_code.format` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmployeeCode.java:15` |
+| `employee_id.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:120` |
+| `end_date.order` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmploymentPeriod.java:29` |
+| `entry.missing` | NOT_FOUND | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:117` |
+| `entry_type.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/EntryType.java:19` |
+| `expense_date.future` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:145` |
+| `expense_date.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:122` |
+| `expense_date.stale` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:146` |
+| `freelance.rate` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/ContractType.java:32` |
+| `hire_date.future` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmploymentPeriod.java:28` |
+| `hire_date.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmploymentPeriod.java:26` |
+| `hire_date.range` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/EmploymentPeriod.java:27` |
+| `hours.max` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/TimeEntry.java:62` |
+| `hours.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/Hours.java:15` |
+| `hours.positive` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/Hours.java:16` |
+| `hours.step` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/Hours.java:17` |
+| `hours_per_day.range` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:86` |
+| `hours_per_day.step` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:87` |
+| `iban.format` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Iban.java:19` |
+| `iban.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Iban.java:17` |
+| `iban.mod97` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Iban.java:21` |
+| `iban.nl_length` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Iban.java:20` |
+| `intern.rate` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/ContractType.java:29` |
+| `iso_week.not_in_year` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/IsoWeek.java:30` |
+| `iso_week.range` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/IsoWeek.java:29` |
+| `iso_year.range` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/IsoWeek.java:28` |
+| `manager.inactive` | CONFLICT | `nl/haystaq/tijdwijs/personeel/application/EmployeeService.java:69` |
+| `manager.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/application/EmployeeService.java:68` |
+| `manager.self` | CONFLICT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:141` |
+| `money.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/Money.java:15` |
+| `money.negative` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/Money.java:17` |
+| `money.scale` | INVALID_INPUT | `nl/haystaq/tijdwijs/shared/domain/Money.java:16` |
+| `name` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Client.java:54` |
+| `overtime.before_contract_hours` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:93` |
+| `payment_term_days` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Client.java:60` |
+| `phone.format` | INVALID_INPUT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:194` |
+| `project.closed` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:105` |
+| `project.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/application/ProjectDirectoryAdapter.java:45` |
+| `project.no_tasks` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:123` |
+| `project.not_active` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:145` |
+| `rate_override.not_billable` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/ProjectTask.java:44` |
+| `receipt_reference.required` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:138` |
+| `role.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/ProjectMember.java:27` |
+| `sick.retroactive` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:90` |
+| `special.reason_required` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Absence.java:95` |
+| `start_date.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:85` |
+| `status.not_approvable` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:122` |
+| `status.not_decidable` | CONFLICT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:170` |
+| `status.not_payable` | CONFLICT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:175` |
+| `status.not_rejectable` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:132` |
+| `status.not_submittable` | CONFLICT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:165` |
+| `status.transition` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:121` |
+| `status.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/ProjectStatus.java:20` |
+| `submit.no_entries` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:113` |
+| `submit.week_incomplete` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:115` |
+| `task.archived` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:86` |
+| `task.duplicate` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:106` |
+| `task.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:85` |
+| `task_id.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/TimeEntry.java:60` |
+| `timesheet.duplicate` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:69` |
+| `timesheet.locked` | CONFLICT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:87` |
+| `timesheet.missing` | NOT_FOUND | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:170` |
+| `vat_number` | INVALID_INPUT | `nl/haystaq/tijdwijs/projecten/domain/Client.java:56` |
+| `vat_rate.category` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:135` |
+| `vat_rate.unknown` | INVALID_INPUT | `nl/haystaq/tijdwijs/declaraties/domain/ExpenseClaim.java:128` |
+| `week.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:64` |
+| `work_date.after_employment` | CONFLICT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:166` |
+| `work_date.after_project` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:147` |
+| `work_date.before_hire` | CONFLICT | `nl/haystaq/tijdwijs/personeel/domain/Employee.java:165` |
+| `work_date.before_project` | CONFLICT | `nl/haystaq/tijdwijs/projecten/domain/Project.java:146` |
+| `work_date.missing` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/application/TimesheetService.java:80` |
+| `work_date.outside_week` | INVALID_INPUT | `nl/haystaq/tijdwijs/urenregistratie/domain/Timesheet.java:88` |
