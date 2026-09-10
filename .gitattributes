@@ -1,0 +1,22 @@
+# Line endings expliciet vastleggen. Zonder dit is het resultaat afhankelijk
+# van de lokale core.autocrlf-instelling, en dat verschilt per ontwikkelaar.
+* text=auto eol=lf
+
+# De Maven wrapper MOET LF houden: met CRLF weigert de Linux-runner het script
+# ("bad interpreter"). De .cmd-variant heeft juist CRLF nodig voor Windows.
+mvnw text eol=lf
+gradlew text eol=lf
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binaire bestanden nooit converteren.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
